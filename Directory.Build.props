@@ -1,0 +1,22 @@
+<Project>
+
+  <!-- 全プロジェクト共通設定。環境確定 v1: ツール本体は net472（docs/implementation-plan.md §0）。 -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Deterministic>true</Deterministic>
+    <!-- net472 でビルドするための参照アセンブリ（CI/再現性のため明示）。 -->
+    <AutomaticallyUseReferenceAssemblyPackages>true</AutomaticallyUseReferenceAssemblyPackages>
+  </PropertyGroup>
+
+  <!-- net472 には record の init アクセサに必要な IsExternalInit が無いため shim を全projに注入。 -->
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)build\IsExternalInit.cs" Link="Properties\IsExternalInit.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Weavers xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="FodyWeavers.xsd">
+  <!-- マネージド依存を exe に埋め込み、ロード時に展開する。既定で loose な DLL は出力から除去される。 -->
+  <Costura />
+</Weavers>

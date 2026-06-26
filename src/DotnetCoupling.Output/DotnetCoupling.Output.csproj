@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\DotnetCoupling.Model\DotnetCoupling.Model.csproj" />
+    <ProjectReference Include="..\DotnetCoupling.Scoring\DotnetCoupling.Scoring.csproj" />
+    <ProjectReference Include="..\DotnetCoupling.Rules\DotnetCoupling.Rules.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>
+

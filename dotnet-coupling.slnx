@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DotnetCoupling.Analysis/DotnetCoupling.Analysis.csproj" />
+    <Project Path="src/DotnetCoupling.Cli/DotnetCoupling.Cli.csproj" />
+    <Project Path="src/DotnetCoupling.Git/DotnetCoupling.Git.csproj" />
+    <Project Path="src/DotnetCoupling.Model/DotnetCoupling.Model.csproj" />
+    <Project Path="src/DotnetCoupling.Output/DotnetCoupling.Output.csproj" />
+    <Project Path="src/DotnetCoupling.Rules/DotnetCoupling.Rules.csproj" />
+    <Project Path="src/DotnetCoupling.Scoring/DotnetCoupling.Scoring.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DotnetCoupling.IntegrationTests/DotnetCoupling.IntegrationTests.csproj" />
+    <Project Path="tests/DotnetCoupling.Tests/DotnetCoupling.Tests.csproj" />
+  </Folder>
+</Solution>

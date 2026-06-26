@@ -1,0 +1,7 @@
+<Project>
+  <!--
+    samples/ はテスト用フィクスチャ。ルートの Directory.Build.props（net472 化・IsExternalInit 注入・
+    PackageReference）をレガシー non-SDK サンプルに継承させないため、ここで遮断する。
+    MSBuild は最も近い Directory.Build.props のみを取り込むため、この空ファイルが盾になる。
+  -->
+</Project>
