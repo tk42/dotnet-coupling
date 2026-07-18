@@ -5,8 +5,6 @@ sidebar:
   order: 3
 ---
 
-# CLI Reference
-
 ```
 dotnet-coupling.exe <solution.sln> [options]
 ```
@@ -32,8 +30,28 @@ dotnet-coupling.exe <solution.sln> [options]
 
 ```powershell
 .\dist\dotnet-coupling.exe MyApp.sln --summary
-.\dist\dotnet-coupling.exe MyApp.sln --hotspots --top 10
-.\dist\dotnet-coupling.exe MyApp.sln --violations
+```
+
+```text
+Overall Grade: C
+Score: 68
+Projects: 4
+Types: 37
+Edges: 122
+Hotspots: 3
+Rule violations: 5
+Circular dependencies: 1
+```
+
+```powershell
+.\dist\dotnet-coupling.exe MyApp.sln --hotspots --top 3
+```
+
+```text
+Grade F  Shop.App.UserController
+  depends on Shop.Data.SqlUserRepository
+  Strength: 0.85  Distance: 0.65  Volatility: 0.72  Risk: 0.60
+  Suggestion: Depend on an abstraction (interface) instead of the concrete type, and inject it.
 ```
 
   </Tab>
@@ -43,7 +61,49 @@ dotnet-coupling.exe <solution.sln> [options]
 .\dist\dotnet-coupling.exe MyApp.sln --json report.json
 ```
 
-Emits all information (graph, edges, scores, rule violations, metadata) as a `CouplingReport`. Downstream integrations build on this JSON.
+Emits all information (metadata, summary, nodes, edges, hotspots, rule violations) as a `CouplingReport`. Downstream integrations build on this JSON.
+
+```json
+{
+  "metadata": {
+    "tool": "dotnet-coupling",
+    "version": "1.0.0",
+    "analysisMode": "Semantic",
+    "confidence": "High",
+    "solution": "MyApp.sln",
+    "generatedAt": "2026-07-18T21:00:00+09:00",
+    "warnings": []
+  },
+  "summary": {
+    "score": 68,
+    "grade": "C",
+    "projects": 4,
+    "types": 37,
+    "edges": 122,
+    "hotspots": 3,
+    "ruleViolations": 5,
+    "circularDependencies": 1
+  },
+  "hotspots": [
+    {
+      "source": "Shop.App.UserController",
+      "target": "Shop.Data.SqlUserRepository",
+      "kind": "FieldType",
+      "strength": 0.85,
+      "distance": 0.65,
+      "volatility": 0.72,
+      "risk": 0.6,
+      "grade": "F",
+      "suggestion": "Depend on an abstraction (interface) instead of the concrete type, and inject it.",
+      "filesToRead": ["src/App/UserController.cs"]
+    }
+  ]
+}
+```
+
+<Callout type="note" title="Trimmed for brevity">
+The `nodes` / `edges` / `rules` arrays are omitted here. The actual output contains every element.
+</Callout>
 
   </Tab>
   <Tab title="Markdown">
@@ -51,6 +111,35 @@ Emits all information (graph, edges, scores, rule violations, metadata) as a `Co
 ```powershell
 .\dist\dotnet-coupling.exe MyApp.sln --markdown report.md
 ```
+
+````markdown
+# dotnet-coupling Report
+
+- Solution: `MyApp.sln`
+- Mode: Semantic / Confidence: High
+- Generated: 2026-07-18 21:00:00 +09:00
+
+## Summary
+
+| Metric | Value |
+|---|---|
+| Grade | **C** |
+| Score | 68 |
+| Projects | 4 |
+| Types | 37 |
+| Edges | 122 |
+| Hotspots | 3 |
+| Rule violations | 5 |
+| Circular dependencies | 1 |
+
+## Hotspots (3)
+
+### 1. Grade F — Shop.App.UserController → Shop.Data.SqlUserRepository
+
+- Kind: FieldType, Strength 0.85, Distance 0.65, Volatility 0.72, Risk 0.60
+- Reason: FieldType dependency across a different project; strength 0.85; volatility 0.72.
+- Suggestion: Depend on an abstraction (interface) instead of the concrete type, and inject it.
+````
 
   </Tab>
 </Tabs>

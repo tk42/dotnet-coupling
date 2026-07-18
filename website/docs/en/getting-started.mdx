@@ -5,8 +5,6 @@ sidebar:
   order: 2
 ---
 
-# Getting Started
-
 ## Prerequisites
 
 - **Windows** (semantic analysis is Windows-only)
@@ -36,10 +34,10 @@ Semantic analysis depends on MSBuild and is therefore Windows-only. The engine a
 From Windows Explorer you can also double-click `build.cmd`.
 
 <Callout type="tip" title="When the execution policy blocks the script">
-If PowerShell's execution policy blocks `build.ps1`, bypass it for a single run without changing any persistent setting:
+If PowerShell's execution policy blocks `build.ps1`, bypass it for a single run without changing any persistent setting (append the `-Task` you need):
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -Task Test
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -Task Publish
 ```
 </Callout>
 

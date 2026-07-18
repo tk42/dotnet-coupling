@@ -5,8 +5,6 @@ sidebar:
   order: 2
 ---
 
-# Getting Started
-
 ## 前提条件
 
 - **Windows**（セマンティック解析は Windows 専用）
@@ -36,10 +34,10 @@ sidebar:
 Windows Explorer からは `build.cmd` をダブルクリックでも実行可能です。
 
 <Callout type="tip" title="実行ポリシーで止まる場合">
-PowerShell の実行ポリシーで `build.ps1` がブロックされる場合は、恒久設定を変えずに一回だけバイパスできます:
+PowerShell の実行ポリシーで `build.ps1` がブロックされる場合は、恒久設定を変えずに一回だけバイパスできます（`-Task` は目的に合わせて付けてください）:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -Task Test
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -Task Publish
 ```
 </Callout>
 
