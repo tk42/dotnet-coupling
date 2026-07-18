@@ -78,8 +78,19 @@ public sealed class CouplingWalker
         foreach (var iface in type.Interfaces)
             Add(deps, type, iface, DependencyKind.InterfaceImplementation, typeLoc);
 
+        // 型レベルの属性適用。
+        foreach (var attr in type.GetAttributes())
+            AddAttribute(deps, type, attr, typeLoc);
+
         foreach (var member in type.GetMembers())
         {
+            if (member.IsImplicitlyDeclared)
+                continue;
+
+            // メンバーレベル（メソッド / プロパティ / フィールド）の属性適用。
+            foreach (var attr in member.GetAttributes())
+                AddAttribute(deps, type, attr, PrimaryLocation(member));
+
             switch (member)
             {
                 case IFieldSymbol { IsImplicitlyDeclared: false } field:
@@ -131,12 +142,104 @@ public sealed class CouplingWalker
                     {
                         var source = EnclosingType(invocation, model);
                         if (source is not null)
+                        {
                             Add(deps, source, called.ContainingType, DependencyKind.MethodCall, node.GetLocation());
+                            CollectDiRegistration(invocation, called, source, model, deps, node.GetLocation());
+                        }
+                    }
+                    break;
+                }
+
+                // 静的フィールド/プロパティへのアクセス（静的メソッド呼び出しは MethodCall のまま）。
+                case MemberAccessExpressionSyntax memberAccess:
+                {
+                    var accessed = model.GetSymbolInfo(memberAccess).Symbol;
+                    if (accessed is IFieldSymbol { IsStatic: true } or IPropertySymbol { IsStatic: true })
+                    {
+                        var source = EnclosingType(memberAccess, model);
+                        if (source is not null)
+                            Add(deps, source, accessed.ContainingType, DependencyKind.StaticAccess, node.GetLocation());
                     }
                     break;
                 }
             }
         }
+    }
+
+    private static readonly HashSet<string> DiRegistrationMethods = new()
+    {
+        "AddScoped", "AddSingleton", "AddTransient"
+    };
+
+    /// <summary>
+    /// MS.Extensions.DependencyInjection の登録（AddScoped/Singleton/Transient）を検出し、
+    /// 合成起点（登録呼び出しの外側の型）→ 具象実装型を DiRegistration として記録する。
+    /// </summary>
+    private static void CollectDiRegistration(
+        InvocationExpressionSyntax invocation, IMethodSymbol called, INamedTypeSymbol source,
+        SemanticModel model, List<TypeDependency> deps, Location? loc)
+    {
+        if (!DiRegistrationMethods.Contains(called.Name))
+            return;
+        if (!IsServiceCollection(called.ReceiverType))
+            return;
+
+        var implementation = ResolveDiImplementation(called, invocation, model);
+        if (implementation is not null)
+            Add(deps, source, implementation, DependencyKind.DiRegistration, loc);
+    }
+
+    /// <summary>
+    /// 登録の具象実装型を特定する。
+    /// ジェネリック 2 型引数 = AddScoped&lt;IFoo, Foo&gt;() → Foo、
+    /// ジェネリック 1 型引数 = AddScoped&lt;Foo&gt;()（自己束縛）→ Foo、
+    /// typeof ペア = AddScoped(typeof(IFoo), typeof(Foo)) → Foo。
+    /// </summary>
+    private static ITypeSymbol? ResolveDiImplementation(
+        IMethodSymbol called, InvocationExpressionSyntax invocation, SemanticModel model)
+    {
+        if (called.TypeArguments.Length == 2)
+            return called.TypeArguments[1];
+        if (called.TypeArguments.Length == 1)
+            return called.TypeArguments[0];
+
+        var typeofTargets = invocation.ArgumentList.Arguments
+            .Select(a => a.Expression)
+            .OfType<TypeOfExpressionSyntax>()
+            .Select(t => model.GetTypeInfo(t.Type).Type)
+            .Where(t => t is not null)
+            .ToList();
+        if (typeofTargets.Count >= 2)
+            return typeofTargets[1];
+        if (typeofTargets.Count == 1)
+            return typeofTargets[0];
+
+        return null;
+    }
+
+    private static bool IsServiceCollection(ITypeSymbol? type)
+    {
+        if (type is null)
+            return false;
+        if (IsServiceCollectionNamed(type))
+            return true;
+        foreach (var iface in type.AllInterfaces)
+            if (IsServiceCollectionNamed(iface))
+                return true;
+        return false;
+    }
+
+    private static bool IsServiceCollectionNamed(ITypeSymbol type) =>
+        type.Name == "IServiceCollection"
+        && type.ContainingNamespace?.ToDisplayString() == "Microsoft.Extensions.DependencyInjection";
+
+    private static void AddAttribute(
+        List<TypeDependency> deps, INamedTypeSymbol source, AttributeData attr, Location? fallback)
+    {
+        if (attr.AttributeClass is not { } attrClass)
+            return;
+        var loc = attr.ApplicationSyntaxReference?.GetSyntax().GetLocation() ?? fallback;
+        Add(deps, source, attrClass, DependencyKind.Attribute, loc);
     }
 
     private static INamedTypeSymbol? EnclosingType(SyntaxNode node, SemanticModel model)
@@ -148,12 +251,20 @@ public sealed class CouplingWalker
     private static void Add(
         List<TypeDependency> deps, INamedTypeSymbol source, ITypeSymbol? rawTarget, DependencyKind kind, Location? loc)
     {
+        var (file, line) = Where(loc);
+
         foreach (var target in ResolveNamedTypes(rawTarget))
         {
-            if (!IsInterestingTarget(source, target))
-                continue;
-            var (file, line) = Where(loc);
-            deps.Add(new TypeDependency(source, target, kind, file, line));
+            if (IsInterestingTarget(source, target))
+                deps.Add(new TypeDependency(source, target, kind, file, line));
+        }
+
+        // ジェネリック型引数は文脈 kind に依らず GenericArgument として拾う。
+        // 例: field List<Order> は container List（FieldType）に加え Order（GenericArgument）を記録する。
+        foreach (var arg in CollectGenericArguments(rawTarget))
+        {
+            if (IsInterestingTarget(source, arg))
+                deps.Add(new TypeDependency(source, arg, DependencyKind.GenericArgument, file, line));
         }
     }
 
@@ -167,6 +278,27 @@ public sealed class CouplingWalker
                 break;
             case INamedTypeSymbol named:
                 yield return (INamedTypeSymbol)named.OriginalDefinition;
+                break;
+        }
+    }
+
+    /// <summary>ジェネリック型引数を再帰的に列挙する（ネスト・配列要素も辿る）。</summary>
+    private static IEnumerable<INamedTypeSymbol> CollectGenericArguments(ITypeSymbol? type)
+    {
+        switch (type)
+        {
+            case IArrayTypeSymbol array:
+                foreach (var inner in CollectGenericArguments(array.ElementType))
+                    yield return inner;
+                break;
+            case INamedTypeSymbol named:
+                foreach (var arg in named.TypeArguments)
+                {
+                    foreach (var resolved in ResolveNamedTypes(arg))
+                        yield return resolved;
+                    foreach (var nested in CollectGenericArguments(arg))
+                        yield return nested;
+                }
                 break;
         }
     }

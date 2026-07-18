@@ -141,9 +141,15 @@ score     = round(100 × (1 − repo_risk))
 | MethodParameter | 0.65 |
 | StaticAccess | 0.60 |
 | MethodCall | 0.50 |
+| DiRegistration | 0.50 |
 | GenericArgument | 0.45 |
 | Attribute | 0.30 |
 | UsingDirective | 0.10 |
+
+> **実装済みの依存種別**: Inheritance / InterfaceImplementation / FieldType / PropertyType /
+> ConstructorParameter / MethodParameter / ReturnType / ObjectCreation / MethodCall /
+> **DiRegistration** / **GenericArgument** / **StaticAccess** / **Attribute**（太字は Track A で追加）。
+> `UsingDirective` / `Reflection` / `DynamicAccess` は強度定義のみで、現状は抽出していません。
 
 ### Hotspot 判定
 
@@ -205,11 +211,25 @@ Cli → Output → {Rules, Scoring} → {Analysis, Git} → Model
 
 ## ロードマップ
 
+Phase 1（CLI MVP）完了後は「解析コアの正確性」を最優先とし、その後ドキュメント・公開へ進めます。
+
 - [x] **Phase 1** — CLI MVP（セマンティック解析・スコアリング・ホットスポット・ルール・出力）
-- [ ] **Phase 2** — CI 対応（`--diff` / `--baseline` / SARIF 出力 / GitHub Actions サンプル）
-- [ ] **Phase 3** — Web レポート（静的 HTML グラフ可視化）
-- [ ] **Phase 4** — AI 出力（`ai-context.md` / リファクタリング提案）
-- [ ] **Phase 5** — MCP Server（エージェント向け API）
+
+### Track A — 解析コア【現在の最優先】
+
+- [ ] ジェネリック型引数のドロップ修正（`List<Order>` の `Order` を捕捉）
+- [ ] 未実装依存種別の実装：`DiRegistration` / `GenericArgument` / `StaticAccess` / `Attribute`
+- [ ] スコア表・[docs/scoring.md](docs/scoring.md) の同期、スナップショット再生成、version bump
+
+### Track C — ドキュメント・公開【次フェーズ】
+
+- [ ] OSS 公開（MIT ライセンス付与・シークレット走査・public 化）
+- [ ] Blume ドキュメントサイト基盤（`website/` ・ GitHub Pages ・ 日英 i18n）
+- [ ] コンテンツ整備（Getting Started / CLI リファレンス / スコアリング仕様）
+
+> 旧 Phase 2–5（CI 連携 / Web レポート / AI 出力 / MCP Server）は、解析コアを優先するため
+> 一旦ロードマップから外しています。検討経緯・仕様は
+> [docs/implementation-plan.md](docs/implementation-plan.md) を参照。
 
 ---
 
@@ -225,4 +245,4 @@ Cli → Output → {Rules, Scoring} → {Analysis, Git} → Model
 
 ## ライセンス
 
-TBD
+[MIT License](LICENSE) © 2026 tk42

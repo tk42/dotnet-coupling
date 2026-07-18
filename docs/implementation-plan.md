@@ -90,6 +90,11 @@ public sealed record CouplingEdge(
 
 ## 3. フェーズ別計画
 
+> **ロードマップ再編（2026-07-18）**: Phase 1 完了後、方針を「解析コアの正確性を最優先」に変更した。
+> 新順序は **Track A（解析コア）→ Track C（ドキュメント・公開）**。
+> 旧 Phase 2–5（CI 連携 / Web レポート / AI 出力 / MCP Server）は **Track B** として
+> ロードマップから除外し、本節末尾にアーカイブとして保持する（将来再開の可能性は残す）。
+
 ### Phase 1 — CLI MVP（最優先）
 
 **目的:** まず使える診断 CLI。`.sln` を読み、危険な具象依存を出す。
@@ -121,21 +126,83 @@ public sealed record CouplingEdge(
 - `--check` が exit code で合否（§23.2: 0/1/2/3/9）
 - semantic 失敗時に syntax-only フォールバック
 
-### Phase 2 — CI 対応
+### Track A — 解析コア（現在の最優先）
+
+**目的:** 既存抽出の見落とし・過小評価を正し、依存グラフの正確性を底上げする。
+方針決定は 2026-07-18 の設計インタビューで確定（下表）。
+
+**A-1. 精度バグ修正 — ジェネリック型引数のドロップ**
+- 現状 `CouplingWalker.ResolveNamedTypes` が `named.OriginalDefinition` を返すため、
+  `List<Order>` は `List<T>` に解決され **型引数 `Order` への依存が失われる**。
+- 修正: `INamedTypeSymbol.TypeArguments` を再帰的に辿り、拾った型引数を
+  `GenericArgument`（strength 0.45 固定）として emit。container は従来の文脈 kind を維持。
+  ネストジェネリック（`Dictionary<string, List<Order>>`）も同一ルールで再帰拾い。
+
+**A-2. 未実装依存種別の実装（4種）**
+
+| 種別 | 検出方針 | strength |
+|------|----------|---------:|
+| `DiRegistration` | `Add{Scoped,Singleton,Transient}` かつレシーバが `IServiceCollection` 実装。**合成起点（登録呼び出しの外側の型）→ 具象実装** を記録。カバーは MS DI 主要オーバーロード（2型引数 / 1型引数自己束縛 / `typeof` ペア）に限定。Autofac 等・keyed・`AddDbContext` 等の固有拡張は見送り。 | 0.50 |
+| `GenericArgument` | A-1 と一体（型引数の再帰拾い）。 | 0.45 |
+| `StaticAccess` | 静的 `IFieldSymbol`/`IPropertySymbol` への `MemberAccessExpression` を新規に拾う。**静的メソッド呼び出しは `MethodCall` のまま**（既存スナップショットへの影響最小化）。 | 0.60 |
+| `Attribute` | `type.GetAttributes()` と各メンバーの `GetAttributes()` → `AttributeClass` を記録（**型＋メンバーレベル**、パラメータ属性は見送り）。 | 0.30 |
+
+> 見送り: `Reflection` / `DynamicAccess`（ヒューリスティック頼みで偽陽性リスク・低信頼）、
+> `UsingDirective`（strength 0.10 で情報価値が薄い）。
+
+**A-3. 影響と後方互換**
+- エッジ strength は `ForEdge = max(kind strength)`。既存エッジに弱い種別を足しても強度は不変で、
+  スコア変化は主に **新規エッジ**（DI 具象束縛・他で参照されない型引数）から生じる。
+- DI 露出により `ConcreteDependencyRule` の違反が増え、DI 多用のコードベースはグレードが下がり得る。
+  これを **より正確なスコアとして正**とし、**既定有効・version bump**（`Directory.Build.props`）で扱う。
+- 同期: `docs/scoring.md`・README のスコア表に `DiRegistration`/`Reflection`/`DynamicAccess` を追記し
+  「実装済み種別」を明記。スナップショット（Verify）再生成。
+
+**A-4. テスト**
+- `CouplingWalker` はインメモリ `Compilation` でテスト可能（クラス設計どおり）。
+  4種それぞれの focused ユニットテストを追加（ジェネリックのネスト / DI 各オーバーロード /
+  静的 field・property / 型・メンバー属性）。
+- `samples/LegacyLayeredApp` の統合スナップショットを再生成。
+
+### Track C — ドキュメント・公開（次フェーズ）
+
+**目的:** OSS 公開と Blume ベースのドキュメントサイト構築。Track A 完了後に着手。
+方針は 2026-07-18 の設計インタビューで確定。
+
+- **C-1. OSS 公開準備（GitHub Pages の前提）**: `LICENSE`（**MIT**）追加・README の `TBD` 更新、
+  `gitleaks` 等で全履歴のシークレット走査、内部ドキュメントの公開可否を目視確認。
+  → private→public のフリップはメンテナが手動実行 → Pages 有効化。
+  （private リポでは Pages が有料プラン必須のため、公開 → Pages の順序は固定。）
+- **C-2. サイト基盤**: 同リポの `website/` に `npx blume init`。`blume.config.ts` に
+  `base`（プロジェクトページのサブパス配信）・日英 i18n・サイトメタを設定。
+  `.gitignore` に `website/node_modules`・`website/dist`、Node ツールチェーン固定（`.nvmrc` 等）、
+  GitHub Actions（`website/**` 変更で build → Pages デプロイ、`workflow_dispatch` 併設）。
+- **C-3. コンテンツ（MDX、日→英 i18n）**: Getting Started（README から移植）/
+  CLI リファレンス（全オプション・終了コード・Tabs/Procedure 活用）/
+  スコアリング仕様（`scoring.md` ベース、KaTeX 数式・Mermaid 依存方向図）。
+  README は簡潔なランディング（バッジ・クイックスタート・サイト誘導）へ再構成。
+
+---
+
+### Track B（アーカイブ / ロードマップ除外）— 旧 Phase 2–5
+
+> 解析コアを優先するため、以下はロードマップから外した。検討の経緯として保持する。
+
+#### 旧 Phase 2 — CI 対応
 - `--diff <base>`（DiffAnalyzer, LibGit2Sharp）/ `--baseline`
 - SARIF 出力（SarifReporter）
 - GitHub Actions サンプル
 - **ゲート条件確定**（下記 CI 節）
 
-### Phase 3 — Web レポート（静的 HTML）
+#### 旧 Phase 3 — Web レポート（静的 HTML）
 - StaticReportGenerator（report.json + graph.json + index.html、サーバー不要）
 - Project Graph / Namespace Graph / Hotspots / Impact / Diff View
 
-### Phase 4 — AI 出力
+#### 旧 Phase 4 — AI 出力
 - `ai-context.md` / `ai-context.json`（§21）
 - files-to-read / suggested refactoring / constraints / verification commands
 
-### Phase 5 — MCP Server
+#### 旧 Phase 5 — MCP Server
 - `dotnet-coupling mcp` — get_summary / get_hotspots / get_impact /
   get_refactor_plan / get_files_to_read / get_diff_report
 
