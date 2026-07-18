@@ -221,11 +221,11 @@ Phase 1（CLI MVP）完了後は「解析コアの正確性」を最優先とし
 - [ ] 未実装依存種別の実装：`DiRegistration` / `GenericArgument` / `StaticAccess` / `Attribute`
 - [ ] スコア表・[docs/scoring.md](docs/scoring.md) の同期、スナップショット再生成、version bump
 
-### Track C — ドキュメント・公開【次フェーズ】
+### Track C — ドキュメント・公開【進行中】
 
-- [ ] OSS 公開（MIT ライセンス付与・シークレット走査・public 化）
-- [ ] Blume ドキュメントサイト基盤（`website/` ・ GitHub Pages ・ 日英 i18n）
-- [ ] コンテンツ整備（Getting Started / CLI リファレンス / スコアリング仕様）
+- [x] MIT ライセンス付与・シークレット走査 —（public 化のフリップと Pages 有効化はメンテナが手動で実施）
+- [x] Blume ドキュメントサイト基盤（[`website/`](website/) ・ GitHub Pages ・ 日英 i18n ・ [deploy workflow](.github/workflows/docs.yml)）
+- [x] コンテンツ整備（Getting Started / CLI リファレンス / スコアリング仕様、日英）
 
 > 旧 Phase 2–5（CI 連携 / Web レポート / AI 出力 / MCP Server）は、解析コアを優先するため
 > 一旦ロードマップから外しています。検討経緯・仕様は
@@ -234,6 +234,20 @@ Phase 1（CLI MVP）完了後は「解析コアの正確性」を最優先とし
 ---
 
 ## ドキュメント
+
+利用者向けのドキュメントサイト（[Blume](https://useblume.dev) / 日英）を [`website/`](website/) に構築しています。
+public 化と GitHub Pages 有効化の後、`https://tk42.github.io/dotnet-coupling/` で公開されます。
+
+ローカルでのプレビュー / ビルド:
+
+```bash
+cd website
+npm install
+npm run dev     # 開発サーバー
+npm run build   # 本番ビルド（dist/）
+```
+
+### 設計ドキュメント（リポジトリ内）
 
 | ドキュメント | 内容 |
 |---|---|

@@ -1,0 +1,71 @@
+---
+title: Getting Started
+description: dotnet-coupling のインストール、ビルド、はじめての解析までの手順。
+sidebar:
+  order: 2
+---
+
+# Getting Started
+
+## 前提条件
+
+- **Windows**（セマンティック解析は Windows 専用）
+- **.NET Framework 4.7.2** ランタイム
+- **Visual Studio** または **Build Tools**（MSBuild が必要）
+
+<Callout type="note" title="Windows 専用">
+セマンティック解析は MSBuild に依存するため Windows 専用です。解析エンジンは失敗時に syntax-only モードへ自動降格します。
+</Callout>
+
+## ビルド
+
+```powershell
+# PowerShell から一式（Restore → Build → Test → Publish）
+.\build.ps1
+
+# Release ビルドのみ
+.\build.ps1 -Task Build -Configuration Release
+
+# テスト実行
+.\build.ps1 -Task Test
+
+# 単体 exe 発行（dist/ に出力）
+.\build.ps1 -Task Publish
+```
+
+Windows Explorer からは `build.cmd` をダブルクリックでも実行可能です。
+
+<Callout type="tip" title="実行ポリシーで止まる場合">
+PowerShell の実行ポリシーで `build.ps1` がブロックされる場合は、恒久設定を変えずに一回だけバイパスできます:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -Task Test
+```
+</Callout>
+
+## はじめての解析
+
+```powershell
+# サマリ表示（既定）
+.\dist\dotnet-coupling.exe MyApp.sln --summary
+
+# ホットスポット一覧（上位10件）
+.\dist\dotnet-coupling.exe MyApp.sln --hotspots --top 10
+
+# ルール違反一覧
+.\dist\dotnet-coupling.exe MyApp.sln --violations
+
+# 全情報を一括表示
+.\dist\dotnet-coupling.exe MyApp.sln --verbose
+```
+
+## CI 品質ゲート
+
+グレードが基準未満なら終了コード 1 で失敗します。
+
+```powershell
+# グレード B 未満で exit code 1
+.\dist\dotnet-coupling.exe MyApp.sln --check --min-grade B
+```
+
+出力形式やオプションの詳細は [CLI リファレンス](/cli-reference) を参照してください。

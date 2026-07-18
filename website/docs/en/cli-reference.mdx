@@ -1,0 +1,77 @@
+---
+title: CLI Reference
+description: Every option, exit code, and output format of dotnet-coupling.
+sidebar:
+  order: 3
+---
+
+# CLI Reference
+
+```
+dotnet-coupling.exe <solution.sln> [options]
+```
+
+## Options
+
+| Option | Description |
+|---|---|
+| `--summary` | Show the overall summary (default) |
+| `--hotspots` | List hotspots (high-risk couplings) |
+| `--violations` | List rule violations (layer / circular / concrete) |
+| `--verbose` | Summary + hotspots + violations together |
+| `--top <N>` | Limit hotspots to N entries |
+| `--json <path>` | Emit everything as JSON |
+| `--markdown <path>` | Emit a Markdown report |
+| `--check` | Quality-gate decision (pass/fail via exit code) |
+| `--min-grade <A..F>` | Passing threshold for `--check` (default: B) |
+
+## Output formats
+
+<Tabs>
+  <Tab title="Console">
+
+```powershell
+.\dist\dotnet-coupling.exe MyApp.sln --summary
+.\dist\dotnet-coupling.exe MyApp.sln --hotspots --top 10
+.\dist\dotnet-coupling.exe MyApp.sln --violations
+```
+
+  </Tab>
+  <Tab title="JSON">
+
+```powershell
+.\dist\dotnet-coupling.exe MyApp.sln --json report.json
+```
+
+Emits all information (graph, edges, scores, rule violations, metadata) as a `CouplingReport`. Downstream integrations build on this JSON.
+
+  </Tab>
+  <Tab title="Markdown">
+
+```powershell
+.\dist\dotnet-coupling.exe MyApp.sln --markdown report.md
+```
+
+  </Tab>
+</Tabs>
+
+## Exit codes
+
+| Code | Meaning |
+|---:|---|
+| 0 | Pass |
+| 1 | Gate failed |
+| 2 | Configuration error |
+| 3 | Analysis failed |
+| 9 | Internal error |
+
+<Callout type="tip" title="Using it in CI">
+`--check --min-grade B` returns exit code 1 when the grade is below B. Using this exit code in a CI step blocks architectural erosion as a quality gate.
+</Callout>
+
+## CI quality-gate example
+
+```powershell
+.\dist\dotnet-coupling.exe MyApp.sln --check --min-grade B
+if ($LASTEXITCODE -ne 0) { throw "Architecture quality gate failed (grade < B)" }
+```

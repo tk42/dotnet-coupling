@@ -1,0 +1,104 @@
+---
+title: Scoring
+description: The finalized Risk / Grade / Strength / Distance / Volatility formulas and base values.
+sidebar:
+  order: 4
+---
+
+# Scoring
+
+All three axes (Strength / Distance / Volatility) are normalized to `[0, 1]` and combined into an Edge Risk.
+
+## Edge Risk
+
+```
+risk = strength × (0.5 + 0.5·distance) × (0.5 + 0.5·volatility)
+```
+
+Distance and Volatility apply **softening** (a coefficient of 0.5 remains even at value 0). This prevents a strong dependency within the same namespace from being mechanically under-weighted.
+
+<Callout type="note" title="Worked example">
+For `S=0.85, D=0.65, V=0.72`: `0.85 × 0.825 × 0.86 = 0.603` (matches the reference example).
+</Callout>
+
+### Structural Risk (for the primary CI decision)
+
+A deterministic risk that excludes Volatility, used to keep the CI gate stable.
+
+```
+structuralRisk = strength × (0.5 + 0.5·distance)
+```
+
+## Repository Score & Grade
+
+The repo risk is the **mean of the top 20%** of edges by risk (the dangerous tail); with fewer than five edges it falls back to the mean of all.
+
+```
+repo_risk = mean(top 20% of edges by risk)
+score     = round(100 × (1 − repo_risk))
+```
+
+| Score | Grade |
+|------:|:-----:|
+| 90–100 | A |
+| 75–89 | B |
+| 60–74 | C |
+| 40–59 | D |
+| 0–39 | F |
+
+The `--min-grade` decision uses the **structuralRisk-based score** by default.
+
+## Strength (per dependency kind)
+
+When multiple dependency kinds coexist on an edge, **edge strength = max(kind strength across occurrences)**.
+
+| Dependency kind | Strength |
+|---|---:|
+| Inheritance | 1.00 |
+| InterfaceImplementation | 0.90 |
+| FieldType | 0.85 |
+| PropertyType | 0.80 |
+| ConstructorParameter | 0.75 |
+| ObjectCreation | 0.70 |
+| ReturnType | 0.65 |
+| MethodParameter | 0.65 |
+| StaticAccess | 0.60 |
+| MethodCall | 0.50 |
+| DiRegistration | 0.50 |
+| GenericArgument | 0.45 |
+| Attribute | 0.30 |
+| UsingDirective | 0.10 |
+
+<Callout type="info" title="Implemented dependency kinds">
+The analyzer extracts Inheritance / InterfaceImplementation / FieldType / PropertyType / ConstructorParameter / MethodParameter / ReturnType / ObjectCreation / MethodCall / **DiRegistration** / **GenericArgument** / **StaticAccess** / **Attribute** (bold kinds were added in the analysis-core work). `UsingDirective` / `Reflection` / `DynamicAccess` have strength values defined but are not yet extracted.
+</Callout>
+
+## Distance (structural distance)
+
+| Category | Value |
+|---|---:|
+| Within the same Type | 0.00 |
+| Within the same File | 0.10 |
+| Within the same Namespace | 0.25 |
+| Within the same Project | 0.40 |
+| Same Solution, different Project | 0.65 |
+| Internal shared library | 0.75 |
+| External assembly / NuGet | 0.85 |
+
+Layer violations are handled by `LayerViolationRule` (discrete, error), not by distance. Distance represents purely structural distance.
+
+## Volatility (change frequency)
+
+The change count over the last 90-day window is normalized against a fixed scale (default: saturates at 10 changes). An absolute scale — not repo-relative — keeps the CI gate stable.
+
+```
+volatility = min(1, log(1 + changeCount) / log(1 + fullScale))
+```
+
+When unknown (e.g. no Git history), it is treated as `unknown` (equivalent to 0 in risk).
+
+## Hotspot criteria
+
+```
+risk ≥ 0.60  AND  strength ≥ 0.50  AND  distance ≥ 0.50
+```

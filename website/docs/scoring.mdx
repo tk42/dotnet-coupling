@@ -1,0 +1,104 @@
+---
+title: スコアリング仕様
+description: Risk / Grade / Strength / Distance / Volatility の確定式と基準値。
+sidebar:
+  order: 4
+---
+
+# スコアリング仕様
+
+3つの軸（Strength / Distance / Volatility）はすべて `[0, 1]` に正規化され、Edge Risk に合成されます。
+
+## Edge Risk
+
+```
+risk = strength × (0.5 + 0.5·distance) × (0.5 + 0.5·volatility)
+```
+
+Distance と Volatility は **softening**（値が 0 でも係数 0.5 を残す）を適用します。これにより「同一 namespace 内の強依存」が機械的に低リスク化されすぎるのを防ぎます。
+
+<Callout type="note" title="検算">
+`S=0.85, D=0.65, V=0.72` のとき `0.85 × 0.825 × 0.86 = 0.603`（看板例と一致）。
+</Callout>
+
+### 構造 Risk（CI 一次判定用）
+
+Volatility を含めない決定論的な risk。CI ゲートの安定性のために使用します。
+
+```
+structuralRisk = strength × (0.5 + 0.5·distance)
+```
+
+## Repository Score & Grade
+
+エッジ risk 集合のうち **上位 20% の平均**（危険側の裾）を repo risk とし、スコア化します。件数が5未満なら全件平均。
+
+```
+repo_risk = mean(top 20% of edges by risk)
+score     = round(100 × (1 − repo_risk))
+```
+
+| Score | Grade |
+|------:|:-----:|
+| 90–100 | A |
+| 75–89 | B |
+| 60–74 | C |
+| 40–59 | D |
+| 0–39 | F |
+
+CI の `--min-grade` 判定は、既定で **structuralRisk ベースの score** を使います。
+
+## Strength（依存種別ごとの結合強度）
+
+エッジに複数の依存種別が併存する場合、**エッジ strength = max(各出現の kind strength)**。
+
+| 依存種別 | Strength |
+|---|---:|
+| Inheritance | 1.00 |
+| InterfaceImplementation | 0.90 |
+| FieldType | 0.85 |
+| PropertyType | 0.80 |
+| ConstructorParameter | 0.75 |
+| ObjectCreation | 0.70 |
+| ReturnType | 0.65 |
+| MethodParameter | 0.65 |
+| StaticAccess | 0.60 |
+| MethodCall | 0.50 |
+| DiRegistration | 0.50 |
+| GenericArgument | 0.45 |
+| Attribute | 0.30 |
+| UsingDirective | 0.10 |
+
+<Callout type="info" title="実装済みの依存種別">
+Inheritance / InterfaceImplementation / FieldType / PropertyType / ConstructorParameter / MethodParameter / ReturnType / ObjectCreation / MethodCall / **DiRegistration** / **GenericArgument** / **StaticAccess** / **Attribute** を抽出します（太字は解析コア強化で追加）。`UsingDirective` / `Reflection` / `DynamicAccess` は強度定義のみで、現状は抽出していません。
+</Callout>
+
+## Distance（構造距離）
+
+| 区分 | 値 |
+|---|---:|
+| 同一 Type 内 | 0.00 |
+| 同一 File 内 | 0.10 |
+| 同一 Namespace 内 | 0.25 |
+| 同一 Project 内 | 0.40 |
+| 同一 Solution 内・別 Project | 0.65 |
+| 社内共通 Library | 0.75 |
+| 外部 Assembly / NuGet | 0.85 |
+
+レイヤー違反は distance ではなく `LayerViolationRule`（離散・error）で扱います。distance は純粋に構造的距離を表します。
+
+## Volatility（変更頻度）
+
+直近90日窓の変更回数を、固定基準（既定: 10回で飽和）で正規化します。repo 相対ではなく絶対スケールを用い、CI ゲートの安定性を確保します。
+
+```
+volatility = min(1, log(1 + changeCount) / log(1 + fullScale))
+```
+
+Git 履歴が無い等で不明な場合は `unknown`（risk 計算では 0 相当）として扱います。
+
+## Hotspot 判定
+
+```
+risk ≥ 0.60  AND  strength ≥ 0.50  AND  distance ≥ 0.50
+```

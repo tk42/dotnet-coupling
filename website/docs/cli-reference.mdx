@@ -1,0 +1,77 @@
+---
+title: CLI リファレンス
+description: dotnet-coupling の全オプション、終了コード、出力形式のリファレンス。
+sidebar:
+  order: 3
+---
+
+# CLI リファレンス
+
+```
+dotnet-coupling.exe <solution.sln> [オプション]
+```
+
+## オプション
+
+| オプション | 説明 |
+|---|---|
+| `--summary` | 総合サマリを表示（既定） |
+| `--hotspots` | ホットスポット（高リスク結合）一覧 |
+| `--violations` | ルール違反一覧（レイヤー / 循環 / 具象） |
+| `--verbose` | サマリ＋ホットスポット＋違反を一括表示 |
+| `--top <N>` | ホットスポットの表示件数を N 件に制限 |
+| `--json <path>` | 全情報を JSON で出力 |
+| `--markdown <path>` | Markdown レポートを出力 |
+| `--check` | 品質ゲート判定（終了コードで合否） |
+| `--min-grade <A..F>` | `--check` の合格ライン（既定: B） |
+
+## 出力形式
+
+<Tabs>
+  <Tab title="コンソール">
+
+```powershell
+.\dist\dotnet-coupling.exe MyApp.sln --summary
+.\dist\dotnet-coupling.exe MyApp.sln --hotspots --top 10
+.\dist\dotnet-coupling.exe MyApp.sln --violations
+```
+
+  </Tab>
+  <Tab title="JSON">
+
+```powershell
+.\dist\dotnet-coupling.exe MyApp.sln --json report.json
+```
+
+すべての情報（グラフ・エッジ・スコア・ルール違反・メタデータ）を `CouplingReport` として出力します。他ツールとの連携はこの JSON を基点にします。
+
+  </Tab>
+  <Tab title="Markdown">
+
+```powershell
+.\dist\dotnet-coupling.exe MyApp.sln --markdown report.md
+```
+
+  </Tab>
+</Tabs>
+
+## 終了コード
+
+| Code | 意味 |
+|---:|---|
+| 0 | 合格 |
+| 1 | ゲート不合格 |
+| 2 | 設定エラー |
+| 3 | 解析失敗 |
+| 9 | 内部エラー |
+
+<Callout type="tip" title="CI での利用">
+`--check --min-grade B` は、グレードが B 未満のとき exit code 1 を返します。CI のステップでこの終了コードを判定に使うことで、アーキテクチャ劣化を品質ゲートとしてブロックできます。
+</Callout>
+
+## CI 品質ゲートの例
+
+```powershell
+.\dist\dotnet-coupling.exe MyApp.sln --check --min-grade B
+if ($LASTEXITCODE -ne 0) { throw "アーキテクチャ品質ゲート不合格 (grade < B)" }
+```

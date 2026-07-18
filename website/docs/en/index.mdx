@@ -1,0 +1,47 @@
+---
+title: Overview
+description: dotnet-coupling is a static-analysis CLI that scores and visualizes coupling in .NET solutions.
+sidebar:
+  order: 1
+---
+
+# dotnet-coupling
+
+> A static-analysis CLI that visualizes and scores coupling in .NET solutions, quantifying architectural health.
+
+`dotnet-coupling` extracts type-to-type and project-to-project coupling from a .NET solution using Roslyn semantic analysis, then scores risk along three axes: **Strength, Distance, and Volatility**.
+
+Wired into a CI pipeline, it detects architectural erosion quantitatively and acts as a quality gate.
+
+## Features
+
+- 🔍 **Semantic dependency analysis** — accurate type resolution via Roslyn `MSBuildWorkspace`
+- 📊 **Risk scoring** — a Strength × Distance × Volatility model
+- 🏷️ **Grading** — the whole repository graded A–F (CI-gate ready)
+- 🔥 **Hotspot detection** — pinpoints the highest-risk couplings
+- ⚠️ **Rule violations** — layer / circular / concrete-dependency rules
+- 📁 **Multiple outputs** — Console / JSON / Markdown
+- 🌿 **Git integration** — folds the last 90 days of change frequency into Volatility
+- 🛡️ **Fallback** — degrades to syntax-only mode when semantic analysis fails
+
+## Next steps
+
+- [Getting Started](/en/getting-started) — from install to your first analysis
+- [CLI Reference](/en/cli-reference) — every option and exit code
+- [Scoring](/en/scoring) — the finalized Risk / Grade / Strength / Distance / Volatility formulas
+
+## Architecture
+
+```mermaid
+graph LR
+  Cli --> Output
+  Output --> Rules
+  Output --> Scoring
+  Rules --> Analysis
+  Scoring --> Analysis
+  Scoring --> Git
+  Analysis --> Model
+  Git --> Model
+```
+
+`Model` depends on nothing else (dependency direction: `Cli → Output → {Rules, Scoring} → {Analysis, Git} → Model`).

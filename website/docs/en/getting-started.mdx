@@ -1,0 +1,71 @@
+---
+title: Getting Started
+description: Install, build, and run your first analysis with dotnet-coupling.
+sidebar:
+  order: 2
+---
+
+# Getting Started
+
+## Prerequisites
+
+- **Windows** (semantic analysis is Windows-only)
+- **.NET Framework 4.7.2** runtime
+- **Visual Studio** or **Build Tools** (MSBuild required)
+
+<Callout type="note" title="Windows-only">
+Semantic analysis depends on MSBuild and is therefore Windows-only. The engine automatically degrades to syntax-only mode on failure.
+</Callout>
+
+## Build
+
+```powershell
+# Full pipeline from PowerShell (Restore → Build → Test → Publish)
+.\build.ps1
+
+# Release build only
+.\build.ps1 -Task Build -Configuration Release
+
+# Run tests
+.\build.ps1 -Task Test
+
+# Publish a single exe (into dist/)
+.\build.ps1 -Task Publish
+```
+
+From Windows Explorer you can also double-click `build.cmd`.
+
+<Callout type="tip" title="When the execution policy blocks the script">
+If PowerShell's execution policy blocks `build.ps1`, bypass it for a single run without changing any persistent setting:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build.ps1 -Task Test
+```
+</Callout>
+
+## Your first analysis
+
+```powershell
+# Summary (default)
+.\dist\dotnet-coupling.exe MyApp.sln --summary
+
+# Top 10 hotspots
+.\dist\dotnet-coupling.exe MyApp.sln --hotspots --top 10
+
+# Rule violations
+.\dist\dotnet-coupling.exe MyApp.sln --violations
+
+# Everything at once
+.\dist\dotnet-coupling.exe MyApp.sln --verbose
+```
+
+## CI quality gate
+
+Fails with exit code 1 when the grade is below the threshold.
+
+```powershell
+# Exit code 1 when grade < B
+.\dist\dotnet-coupling.exe MyApp.sln --check --min-grade B
+```
+
+See the [CLI Reference](/en/cli-reference) for all options and output formats.
